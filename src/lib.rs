@@ -18,7 +18,7 @@ pub mod errors;
 */
 pub enum RedisValue {
     SimpleString(String),
-    BulkString(Vec<String>),
+    BulkString(String),
     Integer(i64),
     Err(String),
     Array(Vec<RedisValue>)
