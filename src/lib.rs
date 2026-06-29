@@ -16,6 +16,7 @@ pub mod errors;
 4. Bulk String — `$`
 5. Array — `*`
 */
+#[derive(Debug, PartialEq, Eq)]
 pub enum RedisValue {
     SimpleString(String),
     BulkString(String),
