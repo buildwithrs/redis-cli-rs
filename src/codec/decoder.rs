@@ -49,9 +49,11 @@ pub fn decode_bulk_string(bs: &mut BytesMut, size: usize) -> Result<RedisValue, 
         return Err(CliErrors::InvalidRedisValue("bad bulk string".to_string()));
     }
 
-    let bulk_bs = &bs[0..size];
-    let tm = bs[size + 1];
-    let tm1 = bs[size + 2];
+    let bbs = bs.split_to(size+2);
+
+    let bulk_bs = &bbs[0..size];
+    let tm = bbs[size];
+    let tm1 = bbs[size + 1];
     if tm != b'\r' && tm1 != b'\n' {
         return Err(CliErrors::InvalidRedisValue("bad bulk string".to_string()));
     }

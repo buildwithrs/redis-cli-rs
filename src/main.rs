@@ -1,4 +1,4 @@
-use redis_cli_rs::{codec::{encoder::encode_cmd, parse_cmd_to_strings}, errors::CliErrors};
+use redis_cli_rs::{codec::{decoder::decode_redis_value, encoder::encode_cmd, parse_cmd_to_strings}, errors::CliErrors};
 use tokio::{
     io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader, Stdin}, net::TcpStream,
 };
@@ -27,6 +27,9 @@ async fn main() -> anyhow::Result<()> {
         if end {
             break;
         }
+        if cmd == "exit" {
+            break;
+        }
 
         let cmds = parse_cmd_to_strings(&cmd)?;
         println!("sending cmds: {:?} to redis server", cmds);
@@ -36,8 +39,10 @@ async fn main() -> anyhow::Result<()> {
 
         if let Some(val) = framed_reader.next().await {
             match val {
-                Ok(bs) => {
-                    stdout.write_all(&bs).await?;
+                Ok(mut bs) => {
+                    let val = decode_redis_value(&mut bs)?;
+                    println!("{}", val);
+                    // stdout.write_all(&bs).await?;
                 }
                 Err(e) => {
                     stdout.write_all(&e.to_string().into_bytes()).await?;
