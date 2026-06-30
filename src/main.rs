@@ -42,7 +42,6 @@ async fn main() -> anyhow::Result<()> {
                 Ok(mut bs) => {
                     let val = decode_redis_value(&mut bs)?;
                     println!("{}", val);
-                    // stdout.write_all(&bs).await?;
                 }
                 Err(e) => {
                     stdout.write_all(&e.to_string().into_bytes()).await?;

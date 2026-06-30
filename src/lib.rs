@@ -1,12 +1,8 @@
-pub mod client; // the redis client
-
 /// encode commands init by client, and decode result from server
 pub mod codec;
 
-
 /// client errors
 pub mod errors;
-
 
 /// Redis Values
 /*
@@ -22,7 +18,8 @@ pub enum RedisValue {
     BulkString(String),
     Integer(i64),
     Err(String),
-    Array(Vec<RedisValue>)
+    Array(Vec<RedisValue>),
+    Nil,
 }
 
 impl std::fmt::Display for RedisValue {
@@ -46,6 +43,7 @@ fn write_cli(
     top_level: bool,
 ) -> std::fmt::Result {
     match v {
+        RedisValue::Nil => f.write_str("nil"),
         RedisValue::SimpleString(s) => f.write_str(s),
         RedisValue::BulkString(s) => write!(f, "\"{}\"", s),
         RedisValue::Integer(n) => write!(f, "(integer) {}", n),

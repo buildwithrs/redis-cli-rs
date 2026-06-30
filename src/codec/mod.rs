@@ -21,8 +21,6 @@ impl CmdParser {
             return Ok(Vec::new());
         }
 
-        println!("parsing tokens: {:?}", self.tokens);
-
         let mut results = Vec::new();
         let mut chars = Vec::new();
 
@@ -33,7 +31,6 @@ impl CmdParser {
                     let ch = chars.clone();
                     // handle space splited string
                     if ch.len() > 0 {
-                        println!("[parse] build string from: {:?}", ch);
                         results.push(String::from_iter(ch));
                         chars.clear();
                     }
@@ -43,13 +40,11 @@ impl CmdParser {
                 }
 
                 '"' => {
-                    println!("reading string at: {}", self.cur);
                     results.push(self.read_string()?);
                 }
 
                 _ => {
                     // just append the tk into chars, no need check
-                    println!("[parse] pushing {} to chars", tk);
                     chars.push(tk);
                     self.cur += 1;
                 }
@@ -81,7 +76,6 @@ impl CmdParser {
     fn read_string(&mut self) -> Result<String, CliErrors> {
         // consume '"'
         self.cur += 1;
-        println!("start read string at: {}", self.cur);
 
         let mut chars = Vec::new();
         let mut meet_end = false;
@@ -89,12 +83,10 @@ impl CmdParser {
         while !self.is_end() {
             if let Some(ch) = self.consume_char() {
                 if ch == '"' {
-                    println!("meet string end");
                     meet_end = true;
                     break;
                 }
 
-                println!("pushing {} to chars", ch);
                 chars.push(ch);
             } else {
                 break;

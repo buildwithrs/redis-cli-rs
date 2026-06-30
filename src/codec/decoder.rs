@@ -2,14 +2,42 @@ use tokio_util::bytes::{Buf, BytesMut};
 
 use crate::{RedisValue, errors::CliErrors};
 
+#[derive(Debug)]
+pub enum Num {
+    Integer(i64),
+    Size(u64),
+}
+
 pub fn decode_redis_value(bs: &mut BytesMut) -> Result<RedisValue, CliErrors> {
     let prefix = bs.get_u8();
     match prefix {
         b'+' => decode_simple_string(bs),
-        b':' => decode_integer(bs),
+        b':' => {
+            let num = read_num(bs)?;
+            match num {
+                Num::Integer(v) => Ok(RedisValue::Integer(v)),
+                Num::Size(v) => Ok(RedisValue::Integer(v as i64)),
+            }
+        }
+
         b'$' => {
-            let size = read_size(bs)?;
-            decode_bulk_string(bs, size as usize)
+            let num = read_num(bs)?;
+            match num {
+                Num::Integer(v) => {
+                    if v < 0 {
+                        if v == -1 {
+                            return Ok(RedisValue::Nil);
+                        } else {
+                            return Err(CliErrors::InvalidRedisValue(format!("size: {} less than 0", v)));
+                        }
+                    } else {
+                        decode_bulk_string(bs, v as usize)
+                    }
+                },
+                Num::Size(sz) => {
+                    decode_bulk_string(bs, sz as usize)
+                }
+            }
         }
         b'-' => decode_error(bs),
         b'*' => {
@@ -62,27 +90,6 @@ pub fn decode_bulk_string(bs: &mut BytesMut, size: usize) -> Result<RedisValue, 
     Ok(RedisValue::BulkString(s.to_string()))
 }
 
-pub fn decode_integer(bs: &mut BytesMut) -> Result<RedisValue, CliErrors> {
-    let mut bss = Vec::new();
-    loop {
-        let e = bs.get_u8();
-        if e == b'\r' {
-            // expect \n
-            let e1 = bs.get_u8();
-            if e1 != b'\n' {
-                return Err(CliErrors::InvalidRedisValue("expect \n".to_string()));
-            }
-            break;
-        }
-
-        bss.push(e);
-    }
-
-    let n_s = String::from_utf8_lossy(&bss);
-    let integer = n_s.parse::<i64>()?;
-    Ok(RedisValue::Integer(integer))
-}
-
 pub fn decode_array(bs: &mut BytesMut, size: usize) -> Result<RedisValue, CliErrors> {
     let mut arr = vec![];
     for _ in 0..size {
@@ -110,6 +117,30 @@ pub fn decode_error(bs: &mut BytesMut) -> Result<RedisValue, CliErrors> {
 
     let n_s = String::from_utf8_lossy(&bss);
     Ok(RedisValue::Err(n_s.to_string()))
+}
+
+fn read_num(bs: &mut BytesMut) -> Result<Num, CliErrors> {
+    let mut bss = Vec::new();
+    loop {
+        let e = bs.get_u8();
+        if e == b'\r' {
+            // expect \n
+            let e1 = bs.get_u8();
+            if e1 != b'\n' {
+                return Err(CliErrors::InvalidRedisValue("expect \n".to_string()));
+            }
+            break;
+        }
+
+        bss.push(e);
+    }
+
+    let n_s = String::from_utf8_lossy(&bss);
+    if n_s.starts_with('-') {
+        Ok(Num::Integer(n_s.parse::<i64>()?))
+    } else {
+        Ok(Num::Size(n_s.parse::<u64>()?))   
+    }
 }
 
 fn read_size(bs: &mut BytesMut) -> Result<u64, CliErrors> {
